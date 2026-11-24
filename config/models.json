@@ -1,0 +1,12 @@
+{
+  "tasks": {
+    "ideas":    { "primary": "nvidia/nemotron-3-ultra-550b-a55b:free", "fallback": ["baidu/ernie-5.5-flash-preview:free", "nvidia/nemotron-3.5-super-vl:free"] },
+    "pillar":   { "primary": "nvidia/nemotron-3-ultra-550b-a55b:free", "fallback": ["baidu/ernie-5.5-flash-preview:free"] },
+    "adapt":    { "primary": "nvidia/nemotron-3-ultra-550b-a55b:free", "fallback": ["baidu/ernie-5.5-flash-preview:free"] },
+    "slides":   { "primary": "nvidia/nemotron-3-ultra-550b-a55b:free", "fallback": ["baidu/ernie-5.5-flash-preview:free"] },
+    "humanise": { "primary": "nvidia/nemotron-3-ultra-550b-a55b:free", "fallback": [] },
+    "variants": { "primary": "nvidia/nemotron-3.5-lightning:free", "fallback": ["nvidia/nemotron-3.5-super-vl:free"] },
+    "enhance":  { "primary": "nvidia/nemotron-3-ultra-550b-a55b:free", "fallback": ["baidu/ernie-5.5-flash-preview:free"] },
+    "trend":    { "primary": "nvidia/nemotron-3.5-lightning:free", "fallback": [] }
+  }
+}

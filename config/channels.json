@@ -1,0 +1,41 @@
+{
+  "linkedin": {
+    "hook_max_chars": 200,
+    "hard_max_chars": 3000,
+    "hard_max_provisional": false,
+    "hashtags": { "min": 0, "max": 3 },
+    "lengths": {
+      "micro":    { "min": 150,  "max": 300,  "unit": "characters" },
+      "short":    { "min": 300,  "max": 600,  "unit": "characters" },
+      "medium":   { "min": 600,  "max": 1300, "unit": "characters" },
+      "long":     { "min": 1300, "max": 2000, "unit": "characters" },
+      "extended": { "min": 2000, "max": 2900, "unit": "characters" }
+    }
+  },
+  "instagram": {
+    "hook_max_chars": 125,
+    "hard_max_chars": 2200,
+    "hard_max_provisional": true,
+    "hashtags": { "min": 3, "max": 5 },
+    "lengths": {
+      "micro":    { "min": 40,   "max": 125,  "unit": "characters" },
+      "short":    { "min": 80,   "max": 150,  "unit": "characters" },
+      "medium":   { "min": 150,  "max": 600,  "unit": "characters" },
+      "long":     { "min": 600,  "max": 1200, "unit": "characters" },
+      "extended": { "min": 1200, "max": 2000, "unit": "characters" }
+    }
+  },
+  "facebook": {
+    "hook_max_chars": 150,
+    "hard_max_chars": 5000,
+    "hard_max_provisional": true,
+    "hashtags": { "min": 0, "max": 2 },
+    "lengths": {
+      "micro":    { "min": 10,  "max": 30,  "unit": "words" },
+      "short":    { "min": 20,  "max": 50,  "unit": "words" },
+      "medium":   { "min": 50,  "max": 150, "unit": "words" },
+      "long":     { "min": 150, "max": 300, "unit": "words" },
+      "extended": { "min": 300, "max": 500, "unit": "words" }
+    }
+  }
+}
