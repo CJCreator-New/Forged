@@ -10,8 +10,11 @@ out/
 .env.local
 .env*.local
 
-# user-supplied assets (logo, etc.)
-content/assets/
+# user data: posts, drafts, voice profile, logs, reach numbers, logo. Never committed (decision)
+content/
+
+# runtime counters (Brave monthly usage, model calls). Written by the app, not by hand
+config/counters.json
 
 # misc
 .DS_Store

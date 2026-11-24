@@ -60,6 +60,20 @@ Errors use one shape: `{ "error": { "code": string, "message": string, "key"?: s
 | `/api/perf/log` | POST | `{ row }` | `{ appended: true }`. Validated by the log row schema. |
 | `/api/perf` | DELETE | `{ confirm: true }` | `{ cleared: true }`. Clears performance columns only, never posts. |
 
+## Changes made after wave 2 (lead)
+
+- `GET /api/post?path=` added: returns `{ path, frontmatter, body }`. Read only. Refuses paths outside content/ with `bad_path` (400).
+- `POST /api/ideas` returns `idea_file`, which `/api/pick` needs.
+- `POST /api/pick` returns `posts: [{ channel, post_path }]`. It creates no post files; drafts are written by `/api/draft`.
+- `POST /api/enhance` aim ids are `sharper-hook`, `more-concrete`, `shorter`, `warmer`. A fact check that drops a number or name returns `200` with `{ facts_preserved: false, code: "facts_changed", missing: [...] }` and saves nothing. Sentence-opening words are not counted as names.
+- `/api/select-variant` keeps the old body in `versions/`, not `variants/`.
+- `angle_index` is 0-based.
+- Renders are per channel: `weeks/<week>/days/<date>/renders/<channel>/`. Alt text is `renders/<channel>/alt.txt`. Two decks on one day never share a folder.
+- Deck files keep `icons` and `logo` settings beside the deck fields in the same JSON file (read by `src/lib/pipeline/deck/extras.ts`). `DeckSchema` itself does not hold them.
+- `POST /api/render` returns `403 feature_off` when carousel rendering is off, and `422 not_carousel` when the post is not a carousel. No browser starts in either case.
+- Error codes used across routes: `missing_key` (503, names the key), `voice_missing`, `trend_failed`, `trend_cap_reached`, `hard_lint_failed`, `review_required`, `user_edited`, `facts_changed`, `bad_aim`, `bad_path`, `post_not_found`, `no_deck_for_channel`, `not_rendered`, `feature_off`, `not_carousel`.
+- `GET /api/export/post` also accepts `review_confirmed=true`.
+
 ## Ownership
 
 - Routes in `src/app/api/**` are owned by the UI and pipeline builders named in `docs/06-build-plan.md`.
