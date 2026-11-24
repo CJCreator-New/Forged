@@ -33,7 +33,7 @@ One of the subject areas listed in `content/topics.md`, which starts with seven 
 _Avoid_: Category, theme
 
 **Length**:
-The body size of a Post: short, medium, or long. It changes the body, never the facts or the Hook limit.
+The body size of a Post. Tiers are micro, short, medium (default), long, and extended, plus custom, which is an exact target you type in. Each tier has a range per Channel. Length changes the body, never the facts or the Hook limit, and a Post always stays within its Channel's hard max.
 _Avoid_: Size, word count
 
 ## Carousel
@@ -44,6 +44,13 @@ _Avoid_: Carousel (a carousel is the Format, not the object), presentation
 
 **Slide**:
 One page inside a Deck.
+
+**Writing style**:
+A preset that sets how a Post is shaped: conversational, analytical, storytelling, or direct. Presets are editable files in `config/styles/`. Styles never add facts, and the voice profile still sets the tone.
+_Avoid_: Voice (the voice profile is the tone, not a style)
+
+**Enhance**:
+A rewrite of one Post, triggered by you, with a chosen aim such as sharper hook, more concrete, shorter, or warmer. It keeps every fact, passes the linter, and saves the previous text. It is separate from the automatic humanise pass.
 
 **Theme**:
 A named colour preset for a Deck: clean light, dark tech, or warm paper.
