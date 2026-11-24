@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Postline slide</title>
+<style>
+  {{font_face}}
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1080px; height: 1350px; background: {{bg}}; }
+  body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+
+  .slide { position: relative; width: 1080px; height: 1350px; overflow: hidden; background: {{bg}}; color: {{text}}; padding: {{padding}}; display: flex; align-items: center; justify-content: center; }
+  .card::before { content: ""; position: absolute; top: 32px; left: 32px; width: 48px; height: 48px; background: {{accent}}; }
+
+  .card { position: relative; width: 100%; height: 100%; border-radius: {{radius}}; {{card}} padding: 72px; display: flex; flex-direction: column; justify-content: center; }
+
+  .icon { display: block; width: 96px; height: 96px; margin-bottom: 40px; color: {{accent}}; fill: none; stroke: currentColor; }
+
+  .title { font-weight: 800; font-size: 84px; line-height: 1.08; letter-spacing: -0.02em; overflow-wrap: anywhere; }
+  .body { margin-top: 40px; font-size: 40px; line-height: 1.4; color: {{text}}; }
+  .body p { margin-bottom: 16px; }
+  .body p:last-child { margin-bottom: 0; }
+
+  .slide-cover .title { font-size: 120px; line-height: 1.02; }
+  .slide-point .title { font-size: 80px; }
+  .slide-stat .title { font-size: 260px; line-height: 1; color: {{accent}}; letter-spacing: -0.04em; }
+  .slide-stat .body { font-size: 44px; color: {{muted}}; }
+  .slide-quote .title { font-size: 76px; font-weight: 600; line-height: 1.2; }
+  .slide-quote .title::before { content: "\201C"; color: {{accent}}; }
+  .slide-quote .title::after { content: "\201D"; color: {{accent}}; }
+  .slide-quote .body { font-size: 32px; color: {{muted}}; }
+  .slide-cta .title { font-size: 92px; color: {{accent}}; }
+
+  .logo { position: absolute; display: block; }
+  .page { position: absolute; right: 60px; bottom: 40px; font-size: 26px; color: {{muted}}; }
+
+  @page { size: 1080px 1350px; margin: 0; }
+</style>
+</head>
+<body>
+<div class="slide">{{slide_html}}{{logo_html}}<span class="page">{{page}}</span></div>
+</body>
+</html>

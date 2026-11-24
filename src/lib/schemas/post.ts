@@ -41,6 +41,7 @@ export const PostFrontmatterSchema = z.object({
   edit_rating: z.enum(EDIT_RATINGS).nullable(),
   review_required: z.boolean(),
   stale: z.boolean(),
+  body_hash: z.string().regex(/^[a-f0-9]{64}$/).optional(), // sha256 of the body the app last generated; a different body means the user edited it (ADR 0007)
   lint: LintResultSchema,
 });
 
