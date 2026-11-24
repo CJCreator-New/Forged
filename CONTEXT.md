@@ -29,7 +29,7 @@ One content idea offered by the ideas step, with its hooks and a recommended For
 _Avoid_: Idea, topic
 
 **Topic**:
-One of the seven fixed subject areas, such as AI or HR. Broader than an Angle.
+One of the subject areas listed in `content/topics.md`, which starts with seven and can be edited. Broader than an Angle.
 _Avoid_: Category, theme
 
 **Length**:
@@ -113,4 +113,4 @@ The user's writing-style file, `content/voice.md`. The app reads it fresh on eve
 An on or off setting for an optional feature, stored in `config/features.json`. A switched-off feature runs no code, makes no model call, and launches no browser.
 
 **Trend mode**:
-A Feature switch that adds recent search results to the Angle step. If the search fails or runs out of quota, generation stops and shows the reason. It never quietly continues without trends.
+A Feature switch that adds recent search results to the Angle step. If the search fails or reaches the monthly cap of 900 queries, generation stops and shows the reason. It never quietly continues without trends.

@@ -29,4 +29,20 @@
 - **Name check (decided).** HR and people-management posts get a soft review flag for capitalised word pairs that do not start a sentence. No new dependency.
 - **Voice profile (decided).** A regenerated profile is saved as `voice.new.md`. An edited `voice.md` is never overwritten.
 - **Doc fixes to make in the build.** Doc 03 H2 should list en dash too. Doc 04 should say `channel:` not `platform:`, and drop the Facebook deck file.
+- **Performance loop stays on (decided).** `features.json` keeps `enabled: true`. Ranking waits for 20 posts. PRD wording gets corrected.
+- **Facebook is text only in v1 (decided).** No images. Doc 03 image rules are parked for v2.
+- **content/ is git-ignored (decided).** Posts, voice, logs, and reach numbers never enter a repo.
+- **Milestones follow doc 05 v0.2 (decided).** M1 to M4 as written there.
+- **Call counter (decided).** Model calls counted per provider per day, shown in settings, no hard cap.
+- **Humanise override (decided).** Per-post `humanise: on|off|inherit` in frontmatter.
+- **Logging (decided).** One logger, records only model, tokens, and status. A test checks no key value appears.
+- **One caption per Post in v1 (decided).** Instagram per-slide captions are unconfirmed and not used.
+- **LinkedIn limit (decided).** 3,000 characters is the hard max, confirmed from LinkedIn's help page. Our 600 to 1,300 body range is a soft target and is labelled as our own choice.
+- **Instagram 2,200 caption limit and 1080 x 1350 carousel size.** Consistent across secondary sources only. Confirm before the build.
+- **Dynamic model selection (decided by you, details pending).** Free models from OpenRouter by default. A paid key lets the user choose any model. The key is verified when entered. This amends ADR 0002, which assumed a fixed `config/models.json`. Key check: read the key's status with no model call, which shows free-only or paid. The endpoint is confirmed at build time. List refresh: fetched every time the settings page opens (your choice, not the recommended daily refresh). Note the network call on each open.
+- **Free model IDs (checked, changing).** Top of the OpenRouter free collection at check time: `nvidia/nemotron-3-ultra-550b-a55b:free`, `baidu/ernie-5.5-flash-preview:free`, `nvidia/nemotron-3.5-super-vl:free`, `nvidia/nemotron-3.5-lightning:free`. Context length not shown. Must be rechecked at build time.
+- **Topics are editable (decided).** `content/topics.md` starts with the seven topics. The glossary is corrected to match.
+- **Switches editable in v1 (decided, ADR 0005 amended).** The settings screen writes `config/features.json`. Built in M4.
+- **Brave monthly cap of 900 (decided).** Brave now gives about $5 of credit (roughly 1,000 queries) and needs a card on file. The app stops trend search at 900 queries a month. The cap is editable in settings. This replaces the PRD's "free tier" assumption (D5), which needs updating. Brave's rate limit differs by source (1 query per second on the free plan per one source), so pace requests to 1 per second until the dashboard confirms the number.
+- **Time zone (assumed, per your India default).** Timestamps include the local offset (+05:30). Day boundaries use local time.
 - **Open gap.** The foundation code in `src/lib/features/flags.ts` imports the JSON at build time. That contradicts the decision above. Fix it in the next step by reading the file inside each flag function (with no side effects beyond the read).
