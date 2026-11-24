@@ -1,15 +1,15 @@
-// One exported function per feature switch. Each returns the value from config/features.json.
-// The JSON is imported statically, so there are no file reads, writes, or network calls here.
-import features from "../../../config/features.json";
+// One exported function per feature switch. Each reads config/features.json fresh on every call
+// (ADR 0005), so an edit takes effect without a restart. Reads only; no writes, no network.
+import { readSwitches } from "../config/switches";
 
-export const trendMode = () => features.trend_mode;
-export const humanise = () => features.humanise;
-export const carouselRender = () => features.carousel_render;
-export const icons = () => features.icons;
-export const theme = () => features.theme;
-export const styling = () => features.styling;
-export const logo = () => features.logo;
-export const variants = () => features.variants;
-export const length = () => features.length;
-export const performanceLoop = () => features.performance_loop;
-export const linterSoftWarnings = () => features.linter_soft_warnings;
+export const trendMode = () => readSwitches().trend_mode;
+export const humanise = () => readSwitches().humanise;
+export const carouselRender = () => readSwitches().carousel_render;
+export const icons = () => readSwitches().icons;
+export const theme = () => readSwitches().theme;
+export const styling = () => readSwitches().styling;
+export const logo = () => readSwitches().logo;
+export const variants = () => readSwitches().variants;
+export const length = () => readSwitches().length;
+export const performanceLoop = () => readSwitches().performance_loop;
+export const linterSoftWarnings = () => readSwitches().linter_soft_warnings;
