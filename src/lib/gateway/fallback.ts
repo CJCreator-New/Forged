@@ -1,4 +1,4 @@
-import modelsConfig from "../../../config/models.json";
+import { loadModels } from "../config/loaders";
 import { chat, type ChatMessage, type GatewayOptions } from "./openrouter";
 import { GatewayError } from "./errors";
 
@@ -6,7 +6,7 @@ import { GatewayError } from "./errors";
 // An adapter would expose: chat(model, messages, opts) returning { text, model, tokens, status },
 // and be picked by a "provider:model" prefix in config/models.json. Only OpenRouter exists today.
 
-export type TaskName = keyof typeof modelsConfig.tasks;
+export type TaskName = keyof ReturnType<typeof loadModels>["tasks"];
 
 export type FallbackResult = {
   text: string;
@@ -18,7 +18,8 @@ export type FallbackResult = {
 const MOVE_ON_CODES = new Set(["rate_limited", "timeout"]);
 
 export function getTaskModels(task: string): { primary: string; fallback: string[] } {
-  const tasks = modelsConfig.tasks as Record<string, { primary: string; fallback: string[] }>;
+  // Read fresh on every call, so an edit to config/models.json takes effect without a restart.
+  const tasks = loadModels().tasks as Record<string, { primary: string; fallback: string[] }>;
   const entry = tasks[task];
   if (!entry) {
     throw new GatewayError("unknown_task", `No model is configured for task "${task}".`);

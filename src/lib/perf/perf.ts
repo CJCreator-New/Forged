@@ -46,16 +46,23 @@ export function rank(rows: LogRow[], opts: RankOptions = {}): RankResult {
     return { logged, needed: Math.max(0, threshold - logged), ranked: false };
   }
 
-  const buckets = new Map<string, { topic: string; format: string; reachSum: number; ratingSum: number; count: number }>();
+  // Unrated posts (edit_rating null) are left out of the rating average, so they cannot drag it down.
+  const buckets = new Map<
+    string,
+    { topic: string; format: string; reachSum: number; ratingSum: number; ratedCount: number; count: number }
+  >();
   for (const row of withReach) {
     const key = JSON.stringify([row.topic, row.format]);
     let bucket = buckets.get(key);
     if (!bucket) {
-      bucket = { topic: row.topic, format: row.format, reachSum: 0, ratingSum: 0, count: 0 };
+      bucket = { topic: row.topic, format: row.format, reachSum: 0, ratingSum: 0, ratedCount: 0, count: 0 };
       buckets.set(key, bucket);
     }
     bucket.reachSum += row.reach as number;
-    bucket.ratingSum += ratingScore(row.edit_rating);
+    if (row.edit_rating !== null) {
+      bucket.ratingSum += ratingScore(row.edit_rating);
+      bucket.ratedCount += 1;
+    }
     bucket.count += 1;
   }
 
@@ -63,7 +70,7 @@ export function rank(rows: LogRow[], opts: RankOptions = {}): RankResult {
   for (const bucket of buckets.values()) {
     if (bucket.count < minGroup) continue;
     const averageReach = bucket.reachSum / bucket.count;
-    const averageRating = bucket.ratingSum / bucket.count;
+    const averageRating = bucket.ratedCount === 0 ? 0 : bucket.ratingSum / bucket.ratedCount;
     groups.push({
       topic: bucket.topic,
       format: bucket.format,
