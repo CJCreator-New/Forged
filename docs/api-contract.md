@@ -73,6 +73,14 @@ Errors use one shape: `{ "error": { "code": string, "message": string, "key"?: s
 - `POST /api/render` returns `403 feature_off` when carousel rendering is off, and `422 not_carousel` when the post is not a carousel. No browser starts in either case.
 - Error codes used across routes: `missing_key` (503, names the key), `voice_missing`, `trend_failed`, `trend_cap_reached`, `hard_lint_failed`, `review_required`, `user_edited`, `facts_changed`, `bad_aim`, `bad_path`, `post_not_found`, `no_deck_for_channel`, `not_rendered`, `feature_off`, `not_carousel`.
 - `GET /api/export/post` also accepts `review_confirmed=true`.
+- `GET /api/pillar?week=` returns `{ body }`, or `404 pillar_not_found`.
+- `POST /api/week` takes `week` (or `week_id`), an optional `start_date` (defaults to that week's Monday), and a brief with `call_to_action`.
+- `GET /api/week/view` posts include `review_required` and `lint: { hard, soft }` counts.
+- `POST /api/draft` on an existing post regenerates it. It returns `409 user_edited` when you have edited the post, and makes no model call in that case. A week-made day has no brief file, so regeneration uses the post's own frontmatter.
+- `GET /api/deck?path=` returns `{ path, deck, icons, logo }` for the deck editor.
+- `GET /api/perf` returns `enabled`, `threshold`, `min_group`, and `rows` alongside the ranking.
+- `POST /api/perf/log` returns `replaced` when a row is updated. New codes: `duplicate_post_id`, `post_not_found`.
+- Search services: trend search tries Tavily first, then Firecrawl. Usage is reported per service in credits as `counters.search_month`. Brave is no longer used.
 
 ## Ownership
 

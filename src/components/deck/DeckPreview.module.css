@@ -1,0 +1,99 @@
+/* The first slide at 1080 x 1350, scaled to the column width. Sizes use cqw (1% of the slide width). */
+.frame {
+  container-type: inline-size;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1080 / 1350;
+  overflow: hidden;
+  background: var(--deck-bg);
+  color: var(--deck-text);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  box-sizing: border-box;
+}
+
+.inner {
+  position: absolute;
+  inset: 0;
+  padding: var(--deck-pad);
+  box-sizing: border-box;
+}
+
+.card {
+  position: relative;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 6cqw;
+  border-radius: var(--deck-radius);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3cqw;
+  background: color-mix(in srgb, var(--deck-text) 6%, var(--deck-bg));
+}
+
+.card[data-card="outlined"] {
+  background: transparent;
+  border: 0.25cqw solid var(--deck-muted);
+}
+
+.card[data-card="shadow"] {
+  box-shadow: 0 1.5cqw 3.5cqw rgba(0, 0, 0, 0.22);
+}
+
+.icon {
+  width: 9cqw;
+  height: 9cqw;
+  background: var(--deck-icon);
+  -webkit-mask: var(--deck-icon-url) center / contain no-repeat;
+  mask: var(--deck-icon-url) center / contain no-repeat;
+}
+
+.title {
+  margin: 0;
+  font-size: 7cqw;
+  line-height: 1.1;
+  font-weight: 700;
+  color: var(--deck-text);
+  overflow-wrap: anywhere;
+}
+
+.rule {
+  width: 12cqw;
+  height: 0.9cqw;
+  background: var(--deck-accent);
+  border-radius: 0.45cqw;
+}
+
+.body {
+  margin: 0;
+  font-size: 3.6cqw;
+  line-height: 1.45;
+  color: var(--deck-text);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.logo {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: auto;
+  aspect-ratio: 3 / 1;
+  margin: 5.556cqw;
+  border-radius: 0.8cqw;
+  background: var(--deck-accent);
+  color: var(--deck-bg);
+  font-size: 2.6cqw;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.placeholder {
+  color: var(--muted);
+  font-size: 0.9375rem;
+  margin: 0;
+}

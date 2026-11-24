@@ -2,13 +2,12 @@ import { requireLocal } from "../../../lib/security/guard";
 import { loadModels } from "../../../lib/config/loaders";
 import { readSwitches } from "../../../lib/config/switches";
 import { ConfigError } from "../../../lib/config/errors";
-import { BRAVE_MONTHLY_CAP } from "../../../lib/pipeline/trend/counter";
-import { getBraveUsage } from "../../../lib/pipeline/trend/trend";
+import { getSearchUsage } from "../../../lib/pipeline/trend/trend";
 import { errorJson } from "../../../components/settings/apiErrors";
 import { modelCallsToday } from "./usage";
 
-// The two keys this app reads. Only presence is reported, never the value (ADR 0004).
-const KEY_NAMES = ["OPENROUTER_API_KEY", "BRAVE_API_KEY"] as const;
+// The keys this app reads. Only presence is reported, never the value (ADR 0004).
+const KEY_NAMES = ["OPENROUTER_API_KEY", "TAVILY_API_KEY", "FIRECRAWL_API_KEY"] as const;
 
 export async function GET(request: Request): Promise<Response> {
   const blocked = requireLocal(request);
@@ -23,12 +22,12 @@ export async function GET(request: Request): Promise<Response> {
       set: (process.env[name] ?? "").trim() !== "",
     }));
 
-    // Brave usage is null when the counter file is unreadable, so the screen shows "not available yet".
-    let braveMonth: ReturnType<typeof getBraveUsage> | null = null;
+    // Search usage is null when the counter file is unreadable, so the screen shows "not available yet".
+    let searchUsage: ReturnType<typeof getSearchUsage> | null = null;
     try {
-      braveMonth = getBraveUsage();
+      searchUsage = getSearchUsage();
     } catch {
-      braveMonth = null;
+      searchUsage = null;
     }
 
     return Response.json({
@@ -38,10 +37,10 @@ export async function GET(request: Request): Promise<Response> {
       // from /api/models. They are not known here, so they are null and empty.
       models: { tasks, free_only: null, selectable_models: [] },
       counters: {
-        brave_month: braveMonth,
+        // Monthly search credits used and left, per service (Tavily first, Firecrawl backup).
+        search_month: searchUsage,
         model_calls_today: modelCallsToday(new Date()),
       },
-      brave_cap: BRAVE_MONTHLY_CAP,
     });
   } catch (err) {
     if (err instanceof ConfigError) {

@@ -4,12 +4,12 @@ vi.mock("../../../lib/config/switches", () => ({
   readSwitches: vi.fn(),
 }));
 vi.mock("../../../lib/pipeline/trend/trend", () => ({
-  getBraveUsage: vi.fn(),
+  getSearchUsage: vi.fn(),
 }));
 
 import { FEATURE_DEFAULTS } from "../../../lib/features/defaults";
 import { readSwitches } from "../../../lib/config/switches";
-import { getBraveUsage } from "../../../lib/pipeline/trend/trend";
+import { getSearchUsage } from "../../../lib/pipeline/trend/trend";
 import { GET } from "./route";
 
 const FAKE_KEY = "sk-or-test-FAKE-VALUE-9f3a71";
@@ -21,18 +21,24 @@ function req(headers: Record<string, string> = { host: "127.0.0.1:3000" }): Requ
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(readSwitches).mockReturnValue({ ...FEATURE_DEFAULTS } as never);
-  vi.mocked(getBraveUsage).mockReturnValue({ month: "2026-11", used: 12, cap: 900, remaining: 888 });
+  vi.mocked(getSearchUsage).mockReturnValue({
+    month: "2026-11",
+    tavily: { used: 12, cap: 900, remaining: 888 },
+    firecrawl: { used: 0, cap: 900, remaining: 900 },
+  });
 });
 
 afterEach(() => {
   delete process.env.OPENROUTER_API_KEY;
-  delete process.env.BRAVE_API_KEY;
+  delete process.env.TAVILY_API_KEY;
+  delete process.env.FIRECRAWL_API_KEY;
 });
 
 describe("GET /api/settings", () => {
-  it("never contains the value of the OpenRouter key", async () => {
+  it("never contains the value of any key", async () => {
     process.env.OPENROUTER_API_KEY = FAKE_KEY;
-    process.env.BRAVE_API_KEY = FAKE_KEY + "-brave";
+    process.env.TAVILY_API_KEY = FAKE_KEY + "-tavily";
+    process.env.FIRECRAWL_API_KEY = FAKE_KEY + "-firecrawl";
     const res = await GET(req());
     expect(res.status).toBe(200);
     const text = await res.text();
@@ -40,7 +46,8 @@ describe("GET /api/settings", () => {
     const body = JSON.parse(text) as { keys: { name: string; set: boolean }[] };
     expect(body.keys).toEqual([
       { name: "OPENROUTER_API_KEY", set: true },
-      { name: "BRAVE_API_KEY", set: true },
+      { name: "TAVILY_API_KEY", set: true },
+      { name: "FIRECRAWL_API_KEY", set: true },
     ]);
   });
 
@@ -49,18 +56,23 @@ describe("GET /api/settings", () => {
     const res = await GET(req());
     const body = (await res.json()) as { keys: { name: string; set: boolean }[] };
     expect(body.keys.find((k) => k.name === "OPENROUTER_API_KEY")?.set).toBe(false);
-    expect(body.keys.find((k) => k.name === "BRAVE_API_KEY")?.set).toBe(false);
+    expect(body.keys.find((k) => k.name === "TAVILY_API_KEY")?.set).toBe(false);
   });
 
-  it("shows null for Brave usage when it cannot be read", async () => {
-    vi.mocked(getBraveUsage).mockImplementation(() => {
+  it("shows search usage per service, and null when it cannot be read", async () => {
+    const res = await GET(req());
+    const body = (await res.json()) as {
+      counters: { search_month: { tavily: { cap: number } } | null };
+    };
+    expect(body.counters.search_month?.tavily.cap).toBe(900);
+
+    vi.mocked(getSearchUsage).mockImplementation(() => {
       throw new Error("unreadable");
     });
-    const res = await GET(req());
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as { counters: { brave_month: unknown }; brave_cap: number };
-    expect(body.counters.brave_month).toBeNull();
-    expect(body.brave_cap).toBe(900);
+    const res2 = await GET(req());
+    expect(res2.status).toBe(200);
+    const body2 = (await res2.json()) as { counters: { search_month: unknown } };
+    expect(body2.counters.search_month).toBeNull();
   });
 
   it("returns 403 for a non-local host", async () => {

@@ -4,8 +4,10 @@
 export type TrendErrorCode =
   | "missing_key"
   | "bad_query"
-  | "brave_cap_reached"
-  | "brave_error"
+  | "rate_limited"
+  | "timeout"
+  | "search_error"
+  | "trend_unavailable"
   | "counter_unreadable";
 
 export class TrendError extends Error {

@@ -8,7 +8,7 @@ export type Option = { value: string; label: string };
 export const SWITCH_COPY: Record<SwitchKey, { label: string; help: string }> = {
   trend_mode: {
     label: "Trend search",
-    help: "Looks up what people are talking about before suggesting ideas. Uses the Brave search key and the monthly cap.",
+    help: "Looks up what people are talking about before suggesting ideas. Tries Tavily first, then Firecrawl, each within its monthly limit.",
   },
   humanise: {
     label: "Second pass to sound more human",
@@ -111,7 +111,8 @@ export const TASK_LABELS: Record<string, string> = {
 
 export const KEY_LABELS: Record<string, string> = {
   OPENROUTER_API_KEY: "OpenRouter key",
-  BRAVE_API_KEY: "Brave search key",
+  TAVILY_API_KEY: "Tavily search key",
+  FIRECRAWL_API_KEY: "Firecrawl search key",
 };
 
 export function optionLabel(options: Option[], value: unknown): string {

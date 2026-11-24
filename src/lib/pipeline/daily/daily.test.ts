@@ -13,7 +13,6 @@ import { draftPost } from "./draft";
 import { generateVariants } from "./variants";
 import { selectVariant } from "./select-variant";
 import { changeLength } from "./length";
-import { DailyError } from "./errors";
 
 // Model and switch calls are faked. Files are written inside a random folder under content/, removed afterwards.
 // The real content/voice.md is never read or written by these tests.
@@ -238,11 +237,32 @@ describe("daily pipeline", () => {
     expect(isoWeekId(NOW)).toBe("2026-W48");
   });
 
-  it("draft refuses a second post for the same channel and day", async () => {
+  it("draft on an existing unedited post regenerates it and keeps the old body as one version", async () => {
     const { picked } = await makeDay();
     const input = { day_path: picked.day_path, channel: "facebook" as const, length: "medium" as const, style: "direct", humanise: "off" as const };
+    const first = await draftPost(input, { voicePath: VOICE, now: NOW });
+    const oldBody = (await readPost(first.post_path)).body;
+
+    adaptText = "A fresh Facebook post about the checklist.\n\nIt says the same thing in new words.";
     await draftPost(input, { voicePath: VOICE, now: NOW });
-    await expect(draftPost(input, { voicePath: VOICE, now: NOW })).rejects.toBeInstanceOf(DailyError);
-    await expect(draftPost(input, { voicePath: VOICE, now: NOW })).rejects.toMatchObject({ code: "post_exists" });
+
+    const saved = await readPost(first.post_path);
+    expect(saved.body).not.toBe(oldBody);
+    expect(saved.body).toContain("A fresh Facebook post");
+    expect(await listDir(`${picked.day_path}/versions`)).toHaveLength(1);
+  });
+
+  it("draft refuses to regenerate a user-edited post, makes no model call and changes nothing", async () => {
+    const { picked } = await makeDay();
+    const input = { day_path: picked.day_path, channel: "facebook" as const, length: "medium" as const, style: "direct", humanise: "off" as const };
+    const first = await draftPost(input, { voicePath: VOICE, now: NOW });
+    const current = await readPost(first.post_path);
+    await writeMarkdown(first.post_path, { data: current.frontmatter, body: "My own hand-written words." });
+
+    const callsBefore = gateway.mock.calls.length;
+    await expect(draftPost(input, { voicePath: VOICE, now: NOW })).rejects.toMatchObject({ code: "user_edited" });
+    expect(gateway.mock.calls.length).toBe(callsBefore);
+    expect((await readPost(first.post_path)).body).toBe("My own hand-written words.\n");
+    expect(await listDir(`${picked.day_path}/versions`)).toHaveLength(0);
   });
 });

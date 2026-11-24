@@ -21,12 +21,12 @@ import {
 
 type FeatureRow = { key: SwitchKey; default: unknown; current: unknown };
 type KeyStatus = { name: string; set: boolean };
-type BraveMonth = { month: string; used: number; cap: number; remaining: number } | null;
+type ServiceUsage = { used: number; cap: number; remaining: number };
+type SearchMonth = { month: string; tavily: ServiceUsage; firecrawl: ServiceUsage } | null;
 type SettingsData = {
   keys: KeyStatus[];
   models: { tasks: Record<string, { primary: string; fallback: string[] }> };
-  counters: { brave_month: BraveMonth; model_calls_today: Record<string, number> };
-  brave_cap: number;
+  counters: { search_month: SearchMonth; model_calls_today: Record<string, number> };
 };
 type ModelRow = { id: string; name: string; free: boolean };
 type ModelsData = { fetched_at: string; models: ModelRow[] };
@@ -324,14 +324,17 @@ export default function SettingsScreen() {
             </dd>
           </div>
           <div>
-            <dt className="item-title">Brave searches this month</dt>
+            <dt className="item-title">Search credits this month</dt>
             <dd>
-              {settings.counters.brave_month ? (
+              {settings.counters.search_month ? (
                 <>
                   <p>
-                    {settings.counters.brave_month.used} used. {settings.counters.brave_month.remaining} left.
+                    Tavily: {settings.counters.search_month.tavily.used} used, {settings.counters.search_month.tavily.remaining} left of {settings.counters.search_month.tavily.cap}.
                   </p>
-                  <p className="caption">Monthly cap: {settings.brave_cap}. The cap is fixed for now.</p>
+                  <p>
+                    Firecrawl: {settings.counters.search_month.firecrawl.used} used, {settings.counters.search_month.firecrawl.remaining} left of {settings.counters.search_month.firecrawl.cap}.
+                  </p>
+                  <p className="caption">Caps are fixed for now. Tavily is used first.</p>
                 </>
               ) : (
                 <p className="muted">Not available yet.</p>

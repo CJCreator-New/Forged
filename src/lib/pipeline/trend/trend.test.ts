@@ -4,17 +4,23 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readSwitches } from "../../config/switches";
 import { setLogSink } from "../../gateway/log";
-import { resetBravePacingForTests } from "./brave";
-import { fetchTrendContext, getBraveUsage } from "./trend";
+import { resetPacingForTests } from "./request";
+import { validateQuery, fetchTrendContext } from "./trend";
+import { getSearchUsage } from "./trend";
+import { TrendError } from "./errors";
 
 // Switches are mocked, so the real config/features.json is never read or changed by these tests.
 vi.mock("../../config/switches", () => ({ readSwitches: vi.fn() }));
 
 const mockedSwitches = vi.mocked(readSwitches);
 const FAKE_OPENROUTER = "sk-or-test-SECRET-111";
-const FAKE_BRAVE = "brave-test-SECRET-222";
+const FAKE_TAVILY = "tvly-test-SECRET-222";
+const FAKE_FIRECRAWL = "fc-test-SECRET-333";
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-const BRAVE_PREFIX = "https://api.search.brave.com/res/v1/web/search";
+const TAVILY_URL = "https://api.tavily.com/search";
+const FIRECRAWL_URL = "https://api.firecrawl.dev/v2/search";
+const MONTH = "2026-11";
+const NOW = new Date("2026-11-15T10:00:00Z");
 
 let logLines: string[] = [];
 let tmpDir = "";
@@ -25,44 +31,80 @@ function setTrendMode(on: boolean) {
   mockedSwitches.mockReturnValue({ trend_mode: on } as unknown as ReturnType<typeof readSwitches>);
 }
 
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
 function modelResponse(text: string): Response {
-  return new Response(
-    JSON.stringify({ choices: [{ message: { role: "assistant", content: text } }], usage: { total_tokens: 7 } }),
-    { status: 200, headers: { "Content-Type": "application/json" } },
-  );
+  return json({ choices: [{ message: { role: "assistant", content: text } }], usage: { total_tokens: 7 } });
 }
 
-function braveOk(): Response {
-  return new Response(
-    JSON.stringify({
-      web: {
-        results: [
-          { url: "https://news.example.com/a", title: "First story", description: "SNIPPET ONE" },
-          { url: "not a url", title: "Bad url" },
-          { url: "https://news.example.com/b", title: "Second story", extra_snippets: ["SNIPPET TWO"] },
-          { url: "https://news.example.com/c", title: "Third story" },
-          { url: "https://news.example.com/d", title: "Fourth story" },
-          { url: "https://news.example.com/e", title: "Fifth story" },
-          { url: "https://news.example.com/f", title: "Sixth story" },
-        ],
-      },
-    }),
-    { status: 200, headers: { "Content-Type": "application/json" } },
-  );
+function tavilyOk(): Response {
+  return json({
+    query: "x",
+    results: [
+      { url: "https://news.example.com/a", title: "First story", content: "PAGE TEXT ONE", score: 0.9 },
+      { url: "not a url", title: "Bad url", content: "" },
+      { url: "https://news.example.com/b", title: "Second story", content: "PAGE TEXT TWO" },
+      { url: "https://news.example.com/c", title: "Third story", content: "" },
+      { url: "https://news.example.com/d", title: "Fourth story", content: "" },
+      { url: "https://news.example.com/e", title: "Fifth story", content: "" },
+      { url: "https://news.example.com/f", title: "Sixth story", content: "" },
+    ],
+  });
 }
 
-// Sends OpenRouter calls to the model reply and Brave calls to the given response factory.
-function routedFetch(brave: () => Response = braveOk) {
+function firecrawlOk(): Response {
+  return json({
+    success: true,
+    data: {
+      web: [
+        { url: "https://fc.example.com/a", title: "FC one", description: "DESC ONE" },
+        { url: "https://fc.example.com/b", title: "FC two", markdown: "PAGE MD" },
+      ],
+    },
+  });
+}
+
+// Sends model calls to the reply, and search calls to the given responders.
+function routedFetch(
+  tavily: () => Response = tavilyOk,
+  firecrawl: () => Response = firecrawlOk,
+) {
   return vi.fn(async (input: string | URL | Request) => {
     const url = String(input);
     if (url.startsWith(OPENROUTER_URL)) return modelResponse(modelText);
-    if (url.startsWith(BRAVE_PREFIX)) return brave();
+    if (url.startsWith(TAVILY_URL)) return tavily();
+    if (url.startsWith(FIRECRAWL_URL)) return firecrawl();
     throw new Error("unexpected URL in test");
   });
 }
 
-const braveCalls = (fn: ReturnType<typeof vi.fn>) =>
-  fn.mock.calls.filter((c) => String(c[0]).startsWith(BRAVE_PREFIX));
+const searchCalls = (fn: ReturnType<typeof vi.fn>) =>
+  fn.mock.calls.filter((c) => {
+    const url = String(c[0]);
+    return url.startsWith(TAVILY_URL) || url.startsWith(FIRECRAWL_URL);
+  });
+
+function writeCounters(credits: { tavily?: number; firecrawl?: number }) {
+  writeFileSync(
+    countersPath,
+    JSON.stringify({
+      tavily: credits.tavily === undefined ? {} : { [MONTH]: { credits: credits.tavily } },
+      firecrawl: credits.firecrawl === undefined ? {} : { [MONTH]: { credits: credits.firecrawl } },
+    }),
+  );
+}
+
+function readCountersFile() {
+  return JSON.parse(readFileSync(countersPath, "utf8")) as {
+    tavily: Record<string, { credits: number }>;
+    firecrawl: Record<string, { credits: number }>;
+  };
+}
 
 // Runs a promise while moving the fake clock forward, so paced waits can finish.
 async function settle<T>(promise: Promise<T>): Promise<T> {
@@ -70,7 +112,6 @@ async function settle<T>(promise: Promise<T>): Promise<T> {
   const tracked = promise.finally(() => {
     done = true;
   });
-  // Mark as handled now, so a rejection that lands during the loop is not reported as unhandled.
   tracked.catch(() => undefined);
   for (let i = 0; i < 20 && !done; i++) {
     await vi.advanceTimersByTimeAsync(1000);
@@ -82,12 +123,13 @@ beforeEach(() => {
   logLines = [];
   setLogSink({ write: (line) => logLines.push(line) });
   process.env.OPENROUTER_API_KEY = FAKE_OPENROUTER;
-  process.env.BRAVE_API_KEY = FAKE_BRAVE;
+  process.env.TAVILY_API_KEY = FAKE_TAVILY;
+  process.env.FIRECRAWL_API_KEY = FAKE_FIRECRAWL;
   tmpDir = mkdtempSync(path.join(os.tmpdir(), "postline-trend-"));
   countersPath = path.join(tmpDir, "counters.json");
   modelText = "india climate policy news";
-  vi.useFakeTimers();
-  resetBravePacingForTests();
+  vi.useFakeTimers({ now: NOW });
+  resetPacingForTests();
   mockedSwitches.mockReset();
 });
 
@@ -95,7 +137,8 @@ afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
   delete process.env.OPENROUTER_API_KEY;
-  delete process.env.BRAVE_API_KEY;
+  delete process.env.TAVILY_API_KEY;
+  delete process.env.FIRECRAWL_API_KEY;
   rmSync(tmpDir, { recursive: true, force: true });
 });
 
@@ -106,7 +149,7 @@ describe("trend mode switch", () => {
     setTrendMode(false);
     const fetchImpl = routedFetch();
 
-    const result = await fetchTrendContext("india climate", { fetchImpl, countersPath });
+    const result = await fetchTrendContext("india climate", { fetchImpl, countersPath, now: NOW });
 
     expect(result).toEqual({ skipped: true });
     expect(fetchImpl).not.toHaveBeenCalled();
@@ -114,184 +157,203 @@ describe("trend mode switch", () => {
   });
 });
 
-describe("fetchTrendContext", () => {
-  it("returns url and title only, at most 5 items, and counts one search", async () => {
+describe("provider routing", () => {
+  it("uses Tavily when under cap, counts 1 credit, and returns url and title only", async () => {
     setTrendMode(true);
     const fetchImpl = routedFetch();
-    const now = new Date("2026-11-10T09:00:00Z");
 
-    const result = await settle(fetchTrendContext("india climate", { fetchImpl, countersPath, now }));
+    const result = await settle(
+      fetchTrendContext("india climate", { fetchImpl, countersPath, now: NOW }),
+    );
 
     expect(result.skipped).toBe(false);
     if (result.skipped) return;
+    expect(result.provider).toBe("tavily");
     expect(result.query).toBe("india climate policy news");
-    expect(result.items).toEqual([
-      { url: "https://news.example.com/a", title: "First story" },
-      { url: "https://news.example.com/b", title: "Second story" },
-      { url: "https://news.example.com/c", title: "Third story" },
-      { url: "https://news.example.com/d", title: "Fourth story" },
-      { url: "https://news.example.com/e", title: "Fifth story" },
-    ]);
-    for (const item of result.items) {
-      expect(Object.keys(item).sort()).toEqual(["title", "url"]);
-    }
-    expect(allLogs()).not.toContain("SNIPPET");
+    expect(result.items).toHaveLength(5);
+    expect(result.items[0]).toEqual({ url: "https://news.example.com/a", title: "First story" });
+    expect(Object.keys(result.items[0]).sort()).toEqual(["title", "url"]);
+    expect(allLogs()).not.toContain("PAGE TEXT");
 
-    const braveUrl = String(braveCalls(fetchImpl)[0][0]);
-    expect(braveUrl).toContain("q=india+climate+policy+news");
-    expect(braveUrl).toContain("count=5");
-    const braveInit = braveCalls(fetchImpl)[0][1] as RequestInit;
-    expect((braveInit.headers as Record<string, string>)["X-Subscription-Token"]).toBe(FAKE_BRAVE);
+    const [call] = searchCalls(fetchImpl);
+    const init = (call[1] ?? {}) as RequestInit;
+    expect(String(call[0])).toBe(TAVILY_URL);
+    expect((init.headers as Record<string, string>).Authorization).toBe(`Bearer ${FAKE_TAVILY}`);
+    expect(JSON.parse(String(init.body))).toMatchObject({ search_depth: "basic", max_results: 5 });
 
-    expect(getBraveUsage(now, countersPath).used).toBe(1);
-    expect(logLines.some((l) => l.includes('"provider":"brave"'))).toBe(true);
-    expect(logLines.some((l) => l.includes('"provider":"openrouter"'))).toBe(true);
+    expect(readCountersFile().tavily[MONTH]).toEqual({ credits: 1 });
+    expect(readCountersFile().firecrawl).toEqual({});
   });
 
-  it("blocks the call at the monthly cap without calling Brave", async () => {
+  it("uses Firecrawl when Tavily is at its cap, and counts 2 credits", async () => {
     setTrendMode(true);
-    const now = new Date("2026-11-10T09:00:00Z");
-    writeFileSync(countersPath, JSON.stringify({ brave: { "2026-11": 900 } }));
+    writeCounters({ tavily: 900 });
     const fetchImpl = routedFetch();
 
-    await expect(settle(fetchTrendContext("india climate", { fetchImpl, countersPath, now }))).rejects.toMatchObject({
-      code: "brave_cap_reached",
-    });
-    expect(braveCalls(fetchImpl)).toHaveLength(0);
+    const result = await settle(
+      fetchTrendContext("india climate", { fetchImpl, countersPath, now: NOW }),
+    );
+
+    expect(result.skipped).toBe(false);
+    if (result.skipped) return;
+    expect(result.provider).toBe("firecrawl");
+    expect(result.items).toEqual([
+      { url: "https://fc.example.com/a", title: "FC one" },
+      { url: "https://fc.example.com/b", title: "FC two" },
+    ]);
+    expect(searchCalls(fetchImpl).map((c) => String(c[0]))).toEqual([FIRECRAWL_URL]);
+    const [, init] = searchCalls(fetchImpl)[0];
+    expect((init as RequestInit).headers).toMatchObject({ Authorization: `Bearer ${FAKE_FIRECRAWL}` });
+    expect(readCountersFile().firecrawl[MONTH]).toEqual({ credits: 2 });
+    expect(readCountersFile().tavily[MONTH]).toEqual({ credits: 900 });
   });
 
+  it("falls back to Firecrawl when Tavily returns 429, and does not count the failed call", async () => {
+    setTrendMode(true);
+    const fetchImpl = routedFetch(() => new Response("slow down", { status: 429 }));
+
+    const result = await settle(
+      fetchTrendContext("india climate", { fetchImpl, countersPath, now: NOW }),
+    );
+
+    expect(result.skipped).toBe(false);
+    if (result.skipped) return;
+    expect(result.provider).toBe("firecrawl");
+    expect(searchCalls(fetchImpl).map((c) => String(c[0]))).toEqual([TAVILY_URL, FIRECRAWL_URL]);
+    expect(readCountersFile().tavily).toEqual({});
+    expect(readCountersFile().firecrawl[MONTH]).toEqual({ credits: 2 });
+  });
+
+  it("throws trend_unavailable with no search call when both providers are at cap", async () => {
+    setTrendMode(true);
+    writeCounters({ tavily: 900, firecrawl: 900 });
+    const fetchImpl = routedFetch();
+
+    const error = await settle(
+      fetchTrendContext("india climate", { fetchImpl, countersPath, now: NOW }).catch((e) => e),
+    );
+
+    expect(error).toBeInstanceOf(TrendError);
+    expect((error as TrendError).code).toBe("trend_unavailable");
+    expect((error as TrendError).message).toContain("out of credits or unavailable");
+    expect((error as TrendError).message).toContain("Trend mode stops for this session");
+    expect(searchCalls(fetchImpl)).toHaveLength(0);
+  });
+
+  it("throws trend_unavailable when Tavily fails and Firecrawl is at cap", async () => {
+    setTrendMode(true);
+    writeCounters({ firecrawl: 900 });
+    const fetchImpl = routedFetch(() => new Response("boom", { status: 500 }));
+
+    const error = await settle(
+      fetchTrendContext("india climate", { fetchImpl, countersPath, now: NOW }).catch((e) => e),
+    );
+
+    expect((error as TrendError).code).toBe("trend_unavailable");
+    expect(searchCalls(fetchImpl)).toHaveLength(1);
+  });
+});
+
+describe("keys", () => {
+  it("throws missing_key with the key name only, and never prints the other key value", async () => {
+    setTrendMode(true);
+    delete process.env.TAVILY_API_KEY;
+    const fetchImpl = routedFetch();
+
+    const error = await settle(
+      fetchTrendContext("india climate", { fetchImpl, countersPath, now: NOW }).catch((e) => e),
+    );
+
+    expect((error as TrendError).code).toBe("missing_key");
+    expect((error as TrendError).key).toBe("TAVILY_API_KEY");
+    expect((error as Error).message).toContain("TAVILY_API_KEY");
+    expect((error as Error).message).not.toContain(FAKE_FIRECRAWL);
+    expect(allLogs()).not.toContain(FAKE_FIRECRAWL);
+    expect(searchCalls(fetchImpl)).toHaveLength(0);
+  });
+
+  it("never puts a key value in a log line or an error message, even on a 500", async () => {
+    setTrendMode(true);
+    const fetchImpl = routedFetch(
+      () => new Response("boom", { status: 500 }),
+      () => new Response("boom", { status: 500 }),
+    );
+
+    const error = await settle(
+      fetchTrendContext("india climate", { fetchImpl, countersPath, now: NOW }).catch((e) => e),
+    );
+
+    expect((error as TrendError).code).toBe("trend_unavailable");
+    expect(allLogs()).toContain('"provider":"tavily"');
+    expect(allLogs()).toContain('"provider":"firecrawl"');
+    for (const secret of [FAKE_OPENROUTER, FAKE_TAVILY, FAKE_FIRECRAWL]) {
+      expect((error as Error).message).not.toContain(secret);
+      expect(allLogs()).not.toContain(secret);
+    }
+  });
+});
+
+describe("pacing", () => {
   it("paces two calls in the same tick so the second waits 1000 ms", async () => {
     setTrendMode(true);
+    const times: number[] = [];
     const fetchImpl = routedFetch();
-    const now = new Date("2026-11-10T09:00:00Z");
+    const timed = vi.fn(async (input: string | URL | Request) => {
+      if (String(input).startsWith(TAVILY_URL)) times.push(Date.now());
+      return fetchImpl(input);
+    });
 
-    const first = fetchTrendContext("india climate", { fetchImpl, countersPath, now });
-    const second = fetchTrendContext("india climate", { fetchImpl, countersPath, now });
-
-    await vi.advanceTimersByTimeAsync(0);
-    expect(braveCalls(fetchImpl)).toHaveLength(1);
-
-    await vi.advanceTimersByTimeAsync(999);
-    expect(braveCalls(fetchImpl)).toHaveLength(1);
-
-    await vi.advanceTimersByTimeAsync(1);
-    await vi.advanceTimersByTimeAsync(0);
-    expect(braveCalls(fetchImpl)).toHaveLength(2);
-
+    const first = settle(fetchTrendContext("india climate", { fetchImpl: timed, countersPath, now: NOW }));
+    const second = settle(fetchTrendContext("india climate", { fetchImpl: timed, countersPath, now: NOW }));
     await Promise.all([first, second]);
-    expect(getBraveUsage(now, countersPath).used).toBe(2);
-  });
 
-  it("throws missing_key with the key name only when BRAVE_API_KEY is unset", async () => {
-    setTrendMode(true);
-    delete process.env.BRAVE_API_KEY;
-    const fetchImpl = routedFetch();
-
-    let caught: unknown;
-    try {
-      await settle(fetchTrendContext("india climate", { fetchImpl, countersPath }));
-    } catch (err) {
-      caught = err;
-    }
-
-    expect(caught).toMatchObject({ code: "missing_key", key: "BRAVE_API_KEY" });
-    expect(String((caught as Error).message)).toContain("BRAVE_API_KEY");
-    expect(String((caught as Error).message)).not.toContain(FAKE_BRAVE);
-    expect(allLogs()).not.toContain(FAKE_BRAVE);
-    expect(fetchImpl).not.toHaveBeenCalled();
-  });
-
-  it("never puts the Brave key value in the error or the log", async () => {
-    setTrendMode(true);
-    const fetchImpl = routedFetch(() => new Response("echo " + FAKE_BRAVE, { status: 500 }));
-
-    let caught: unknown;
-    try {
-      await settle(fetchTrendContext("india climate", { fetchImpl, countersPath }));
-    } catch (err) {
-      caught = err;
-    }
-
-    expect(caught).toMatchObject({ code: "brave_error", status: 500 });
-    expect(String((caught as Error).message)).not.toContain(FAKE_BRAVE);
-    expect(allLogs()).not.toContain(FAKE_BRAVE);
-    expect(allLogs()).not.toContain(FAKE_OPENROUTER);
-  });
-
-  it("returns brave_error with the status only on a non-200 response", async () => {
-    setTrendMode(true);
-    const fetchImpl = routedFetch(() => new Response("{}", { status: 429 }));
-    const now = new Date("2026-11-10T09:00:00Z");
-
-    let caught: unknown;
-    try {
-      await settle(fetchTrendContext("india climate", { fetchImpl, countersPath, now }));
-    } catch (err) {
-      caught = err;
-    }
-
-    expect(caught).toMatchObject({ code: "brave_error", status: 429 });
-    expect((caught as Error).message).toBe("Brave Search returned HTTP 429.");
-    expect(getBraveUsage(now, countersPath).used).toBe(0);
-  });
-
-  it("rejects a query that is not 3 to 6 words, or has quotes, without calling Brave", async () => {
-    setTrendMode(true);
-    modelText = '"two words"';
-    const fetchImpl = routedFetch();
-
-    await expect(
-      settle(fetchTrendContext("india climate", { fetchImpl, countersPath })),
-    ).rejects.toMatchObject({ code: "bad_query" });
-    expect(braveCalls(fetchImpl)).toHaveLength(0);
+    expect(times).toHaveLength(2);
+    expect(times[1] - times[0]).toBeGreaterThanOrEqual(1000);
   });
 });
 
 describe("counter file", () => {
-  it("is created as valid JSON and survives a second call in the same month", async () => {
+  it("is valid JSON in credits and survives a second call in the same month", async () => {
     setTrendMode(true);
     const fetchImpl = routedFetch();
-    const now = new Date("2026-11-10T09:00:00Z");
-    expect(existsSync(countersPath)).toBe(false);
+    const options = { fetchImpl, countersPath, now: NOW };
 
-    await settle(fetchTrendContext("india climate", { fetchImpl, countersPath, now }));
-    const afterFirst = JSON.parse(readFileSync(countersPath, "utf8"));
-    expect(afterFirst).toEqual({ brave: { "2026-11": 1 } });
+    await settle(fetchTrendContext("india climate", options));
+    await settle(fetchTrendContext("india climate", options));
 
-    await settle(fetchTrendContext("india climate", { fetchImpl, countersPath, now }));
-    const afterSecond = JSON.parse(readFileSync(countersPath, "utf8"));
-    expect(afterSecond).toEqual({ brave: { "2026-11": 2 } });
-  });
-
-  it("keys the count by UTC month", async () => {
-    setTrendMode(true);
-    writeFileSync(countersPath, JSON.stringify({ brave: { "2026-10": 900 } }));
-    const fetchImpl = routedFetch();
-    const now = new Date("2026-11-01T00:30:00Z");
-
-    await settle(fetchTrendContext("india climate", { fetchImpl, countersPath, now }));
-
-    expect(JSON.parse(readFileSync(countersPath, "utf8"))).toEqual({ brave: { "2026-10": 900, "2026-11": 1 } });
+    const saved = readCountersFile();
+    expect(saved.tavily[MONTH]).toEqual({ credits: 2 });
+    expect(saved.firecrawl).toEqual({});
   });
 });
 
-describe("getBraveUsage", () => {
-  it("reports month, used, cap and remaining", () => {
-    writeFileSync(countersPath, JSON.stringify({ brave: { "2026-11": 40 } }));
-    expect(getBraveUsage(new Date("2026-11-20T12:00:00Z"), countersPath)).toEqual({
-      month: "2026-11",
-      used: 40,
-      cap: 900,
-      remaining: 860,
+describe("getSearchUsage", () => {
+  it("reports month and both providers in credits", () => {
+    writeCounters({ tavily: 12, firecrawl: 4 });
+
+    expect(getSearchUsage(NOW, countersPath)).toEqual({
+      month: MONTH,
+      tavily: { used: 12, cap: 900, remaining: 888 },
+      firecrawl: { used: 4, cap: 900, remaining: 896 },
     });
   });
 
   it("reports zero when no counter file exists yet", () => {
-    expect(getBraveUsage(new Date("2026-11-20T12:00:00Z"), countersPath)).toEqual({
-      month: "2026-11",
-      used: 0,
-      cap: 900,
-      remaining: 900,
+    expect(getSearchUsage(NOW, countersPath)).toEqual({
+      month: MONTH,
+      tavily: { used: 0, cap: 900, remaining: 900 },
+      firecrawl: { used: 0, cap: 900, remaining: 900 },
     });
+  });
+});
+
+describe("validateQuery", () => {
+  it("accepts 3 to 6 plain words", () => {
+    expect(validateQuery("  india climate policy news  ")).toBe("india climate policy news");
+  });
+
+  it("rejects a query with quote marks, or fewer than 3 words", () => {
+    expect(() => validateQuery('"india climate" news')).toThrow(TrendError);
+    expect(() => validateQuery("india news")).toThrow(TrendError);
   });
 });

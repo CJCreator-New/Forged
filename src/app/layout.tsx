@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import { IBM_Plex_Sans } from "next/font/google";
 import AppShell from "../components/shell/AppShell";
 import "./globals.css";
@@ -20,7 +20,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={`${plex.variable} h-full`}>
       <body className="min-h-full">
-        <AppShell>{children}</AppShell>
+        {/* AppShell reads the current path, which needs a Suspense boundary for static pages. */}
+        <Suspense fallback={null}>
+          <AppShell>{children}</AppShell>
+        </Suspense>
       </body>
     </html>
   );
