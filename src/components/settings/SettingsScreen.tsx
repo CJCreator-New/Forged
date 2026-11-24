@@ -127,10 +127,20 @@ export default function SettingsScreen() {
   }
 
   if (loadError) {
-    return <p className="notice notice-error" role="alert">{loadError}</p>;
+    return (
+      <div className="settings-stack">
+        <h1 className="page-title">Settings</h1>
+        <p className="notice notice-error" role="alert">{loadError}</p>
+      </div>
+    );
   }
   if (!features || !settings) {
-    return <p className="muted">Loading settings.</p>;
+    return (
+      <div className="settings-stack">
+        <h1 className="page-title">Settings</h1>
+        <p className="muted">Loading settings.</p>
+      </div>
+    );
   }
 
   const v = <K extends SwitchKey>(key: K) => features[key] as (typeof FEATURE_DEFAULTS)[K];

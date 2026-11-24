@@ -221,7 +221,7 @@ export function DailyScreen() {
   const hasPosts = dayPath !== null;
 
   return (
-    <main className="min-h-screen bg-[#F1F1EC] font-[family-name:var(--font-geist-sans)] text-[#1B1F1D]">
+    <div className="min-h-screen bg-[#F1F1EC] font-[family-name:var(--font-geist-sans)] text-[#1B1F1D]">
       <div className="mx-auto flex w-full max-w-6xl min-w-0 flex-col gap-10 px-4 py-8 sm:px-6 sm:py-10">
         <header className="flex flex-col gap-2">
           <h1 className="text-[28px] leading-8 font-semibold tracking-[-0.02em] text-[#1B1F1D]">Daily</h1>
@@ -325,6 +325,6 @@ export function DailyScreen() {
           </section>
         ) : null}
       </div>
-    </main>
+    </div>
   );
 }
