@@ -1,0 +1,13 @@
+{
+  "trend_mode": false,
+  "humanise": true,
+  "carousel_render": false,
+  "icons": false,
+  "theme": "clean-light",
+  "styling": { "corner": "rounded", "card": "flat", "padding": "medium" },
+  "logo": { "enabled": false, "corner": "top-right", "size": "small", "opacity": 1, "all_slides": false },
+  "variants": 2,
+  "length": "medium",
+  "performance_loop": { "enabled": true, "min_posts": 20, "min_group": 3 },
+  "linter_soft_warnings": true
+}
