@@ -12,3 +12,8 @@
 - **Path safety.** A path is accepted only if it resolves inside `content/`. Symlinks inside `content/` are not checked yet.
 - **Packages.** `gray-matter` and `vitest` were named in the request. `@types/node` moved from `^20` to `^24` so it matches Vitest's requirement and the Node 24 install.
 - **Dev server.** `next dev -H 127.0.0.1 -p 3000`.
+
+## M1: daily flow folder (2026-11-25)
+
+- **M1: daily flow folder is content/daily/YYYY-MM-DD/, not weeks/.** Reason: the week flow is M3 and the daily flow must not depend on it.
+- Layout: ideas in `content/ideas/YYYY-MM-DD-<slug>.md`; selected posts in `content/daily/YYYY-MM-DD/<platform>.md`; variants in `variants/<platform>-v<n>.md`; pre-humanise copies in `raw/<platform>.md`.
