@@ -1,0 +1,28 @@
+{
+  "tasks": {
+    "ideas": {
+      "primary": "openrouter:google/gemma-4-31b-it:free",
+      "fallback": ["openrouter:inclusionai/ling-3.2-flash:free", "openrouter:google/gemma-4-26b-a4b-it:free", "openrouter:baidu/ernie-5.5-flash-preview:free", "openrouter:nvidia/nemotron-3-ultra-550b-a55b:free"]
+    },
+    "pillar": {
+      "primary": "openrouter:nvidia/nemotron-3-ultra-550b-a55b:free",
+      "fallback": ["openrouter:google/gemma-4-31b-it:free", "openrouter:baidu/ernie-5.5-flash-preview:free"]
+    },
+    "adapt": {
+      "primary": "openrouter:google/gemma-4-26b-a4b-it:free",
+      "fallback": ["openrouter:nvidia/nemotron-3-ultra-550b-a55b:free", "openrouter:google/gemma-4-31b-it:free"]
+    },
+    "slides": {
+      "primary": "openrouter:baidu/ernie-5.5-flash-preview:free",
+      "fallback": ["openrouter:google/gemma-4-26b-a4b-it:free", "openrouter:inclusionai/ling-3.2-flash:free"]
+    },
+    "humanise": {
+      "primary": "openrouter:google/gemma-4-31b-it:free",
+      "fallback": ["openrouter:nvidia/nemotron-3-ultra-550b-a55b:free"]
+    },
+    "variants": {
+      "primary": "openrouter:inclusionai/ling-3.2-flash:free",
+      "fallback": ["openrouter:baidu/ernie-5.5-flash-preview:free", "openrouter:google/gemma-4-26b-a4b-it:free"]
+    }
+  }
+}
